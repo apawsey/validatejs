@@ -116,5 +116,6 @@ var _aureliaValidation = require('aurelia-validation');
 function configure(config) {
   config.container.registerHandler(_aureliaValidation.Validator, _validator.Validator);
   config.container.registerHandler(_aureliaValidation.ValidationReporter, _validationReporter.ValidationReporter);
-  config.globalResources('./validate-binding-behavior');
+  config.globalResources('./validation-rendering-binding-behavior');
+  config.globalResources('./live-validation-rendering-binding-behavior');
 }

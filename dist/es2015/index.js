@@ -11,5 +11,6 @@ export { ValidationRenderer } from './validation-renderer';
 export function configure(config) {
   config.container.registerHandler(Validator, ValidateJSValidator);
   config.container.registerHandler(ValidationReporter, ValidateJSReporter);
-  config.globalResources('./validate-binding-behavior');
+  config.globalResources('./validation-rendering-binding-behavior');
+  config.globalResources('./live-validation-rendering-binding-behavior');
 }

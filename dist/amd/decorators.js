@@ -16,6 +16,7 @@ define(['exports', './validation-rule', './base-decorator'], function (exports, 
   exports.format = format;
   exports.url = url;
   exports.numericality = numericality;
+  exports.custom = custom;
   function length(targetOrConfig, key, descriptor) {
     return (0, _baseDecorator.base)(targetOrConfig, key, descriptor, _validationRule.ValidationRule.lengthRule);
   }
@@ -62,5 +63,13 @@ define(['exports', './validation-rule', './base-decorator'], function (exports, 
 
   function numericality(targetOrConfig, key, descriptor) {
     return (0, _baseDecorator.base)(targetOrConfig, key, descriptor, _validationRule.ValidationRule.numericality);
+  }
+
+  function custom(name, targetOrConfig, key, descriptor) {
+    targetOrConfig = {
+      name: name,
+      config: targetOrConfig === undefined ? true : targetOrConfig
+    };
+    return (0, _baseDecorator.base)(targetOrConfig, key, descriptor, _validationRule.ValidationRule.custom);
   }
 });

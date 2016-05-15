@@ -7,15 +7,23 @@ exports.observeProperty = observeProperty;
 
 var _aureliaMetadata = require('aurelia-metadata');
 
-var _validationConfig = require('./validation-config');
+var _validationRuleset = require('./validation-ruleset');
 
 var _validationEngine = require('./validation-engine');
 
 var _metadataKey = require('./metadata-key');
 
+var _validationRule = require('./validation-rule');
+
 function observeProperty(target, key, descriptor, targetOrConfig, rule) {
-  var config = _aureliaMetadata.metadata.getOrCreateOwn(_metadataKey.validationMetadataKey, _validationConfig.ValidationConfig, target);
-  config.addRule(key, rule(targetOrConfig));
+  var targetPrototype = rule instanceof _validationRule.ValidationRule ? Object.getPrototypeOf(target) : target;
+  var ruleset = _aureliaMetadata.metadata.getOrCreateOwn(_metadataKey.validationMetadataKey, _validationRuleset.ValidationRuleset, targetPrototype);
+  if (rule instanceof _validationRule.ValidationRule) {
+    ruleset.addRule(key, rule);
+  } else {
+    ruleset.addRule(key, rule(targetOrConfig));
+    targetPrototype = null;
+  }
 
   var innerPropertyName = '_' + key;
 
@@ -36,16 +44,25 @@ function observeProperty(target, key, descriptor, targetOrConfig, rule) {
     return this[innerPropertyName];
   };
   descriptor.set = function (newValue) {
-    var reporter = _validationEngine.ValidationEngine.getValidationReporter(this);
+    _validationEngine.ValidationEngine.ensureValidationReporter(this);
 
     this[innerPropertyName] = newValue;
 
-    config.validate(this, reporter);
+    ruleset.validate(this);
   };
 
   descriptor.get.dependencies = [innerPropertyName];
+  var extistingInstanceDescriptor = Object.getOwnPropertyDescriptor(target, key);
+  var alreadyInterceptedInstance = existingDescriptor && existingDescriptor.get && existingDescriptor.get.generatedBy == "au-validation";
+  var extistingProtoTypeDescriptor = targetPrototype ? Object.getOwnPropertyDescriptor(targetPrototype, key) : null;
+  var alreadyInterceptedPrototype = existingDescriptor && existingDescriptor.get && existingDescriptor.get.generatedBy == "au-validation";
+  descriptor.get.generatedBy = "au-validation";
 
-  if (!babel) {
+  if (!babel || !alreadyIntercepted) {
     Reflect.defineProperty(target, key, descriptor);
+  }
+
+  if (targetPrototype && !alreadyInterceptedPrototype) {
+    Reflect.defineProperty(targetPrototype, key, descriptor);
   }
 }

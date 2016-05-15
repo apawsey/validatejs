@@ -1,22 +1,61 @@
 import {inject} from 'aurelia-framework';
-import {length, required, date, datetime, email, equality, exclusion, inclusion, format, url, numericality} from 'aurelia-validatejs';
+import {length, required, date, datetime, email, equality, exclusion, inclusion, format, url, numericality, custom} from 'aurelia-validatejs';
 import {ValidationEngine} from 'aurelia-validatejs';
+import {Validator} from 'aurelia-validatejs';
+import validate from 'validate.js';
+
+validate.validators.strongPassword = function(value, options, key, attributes) {
+    let threshold = 3;
+    if (options.hasOwnProperty("minimumComplexityLevel")) {
+        threshold = options.minimumComplexityLevel;
+    }
+    let errorMessage = "should contain " + (threshold < 4 ? "at least " + threshold + " of the following groups:" : "a combination of") + " lowercase letters, uppercase letters, digits or special characters"
+    if (typeof (value) !== 'string') {
+        return false;
+    }
+    let strength = 0;
+    strength += /[A-Z]+/.test(value) ? 1 : 0;
+    strength += /[a-z]+/.test(value) ? 1 : 0;
+    strength += /[0-9]+/.test(value) ? 1 : 0;
+    strength += /[\W]+/.test(value) ? 1 : 0;
+
+    return strength >= threshold ? null : errorMessage;
+}
 
 export class Decorators {
   model;
   errors = [];
   subscriber;
+  validator;
   constructor() {
     this.model = new Model();
-    this.reporter = ValidationEngine.getValidationReporter(this.model);
+    
+    this.reporter = ValidationEngine.getOrCreateValidationReporter(this.model);
     this.subscriber = this.reporter.subscribe(result => {
+      console.log("received errors from reporter!")
       this.renderErrors(result);
     });
   }
+  
   detached() {
     this.subscriber.dispose();
   }
+  
+  addValidator() {
+    if (this.validator) return;
+    this.detached();
+    this.validator = new Validator(this.model);
+    this.validator.ensure("lastName")
+                    .exclusion({
+                      within: ["Skywalker"],
+                      message: "^No way, you're not fooling anyone!"
+                    });
+  }
+  
   submit() {
+    if (this.validator) {
+      this.errors = this.validator.validate();
+    }
     if (!this.hasErrors()) {
       alert('Submitted successfully');
     } else {
@@ -40,7 +79,7 @@ class Model {
   // @date lastUpdated = new Date();
   // @datetime lastTimeUpdated = new Date();
   @email email = 'luke@skywalker.net';
-  @length({ minimum: 5, maximum: 25 }) password = 'equal';
+  @custom('strongPassword') @length({ minimum: 5, maximum: 25 }) password = 'equal';
   @equality('password') confirmPassword = 'equal';
   @inclusion(['blue', 'red']) blueOrRed = 'yellow';
   @exclusion(['male']) gender = 'male';

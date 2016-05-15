@@ -1,11 +1,12 @@
-import {Validator, ValidationEngine, length, required, date, datetime, email, equality, url, numericality} from 'aurelia-validatejs';
+import {Validator, ValidatorLite, ValidationRuleset, ValidationEngine, length, required, date, datetime, email, equality, url, numericality} from 'aurelia-validatejs';
 
 export class Fluent {
   model;
   constructor() {
     this.model = new Model();
-    this.validator = new Validator(this.model)
-      .ensure('firstName')
+    this.validator = new Validator(this.model);
+    let ruleSet = new ValidationRuleset()
+    .ensure('firstName')
         .required()
         .length({minimum: 3, maximum: 10})
       .ensure('lastName')
@@ -26,14 +27,36 @@ export class Fluent {
         .numericality({ onlyInteger: true, lessThan: 115, greaterThan: 0 })
       .ensure('zipCode')
         .format(/\d{5}(-\d{4})?/);
-
-    this.reporter = ValidationEngine.getValidationReporter(this.model);
+    this.validator.importRuleset(ruleSet);
+    this.test = new Model();
+    this.reporter = this.validator.getValidationReporter();
     this.observer = this.reporter.subscribe(result => {
       console.log(result);
     });
   }
+  
+  addValidatorLite() {
+    if (this.secondModel) return;
+    this.secondModel = new Model();
+    this.validatorLite = new ValidatorLite(this.secondModel)
+                        .ensure('gender')
+                          .exclusion(['male'])
+                        .ensure('blueOrRed')
+                          .inclusion(['blue', 'red']);
+    this.secondModelReporter = ValidationEngine.getOrCreateValidationReporter(this.secondModel);
+    this.secondObserver = this.secondModelReporter.subscribe(result => {
+      console.log("From validator lite instance:");
+      result.forEach(error => {
+        console.log(error);
+      })
+    });
+  }
+  
   validate() {
     this.validator.validate();
+    if (this.validatorLite) {
+      this.validatorLite.validate();
+    }
   }
   detached() {
     this.observer.dispose();

@@ -1,7 +1,7 @@
 'use strict';
 
-System.register(['./metadata-key', './validation-config', './validation-engine', './validation-rule', 'aurelia-metadata'], function (_export, _context) {
-  var validationMetadataKey, ValidationConfig, ValidationEngine, ValidationRule, metadata, Validator;
+System.register(['aurelia-metadata', './validation-ruleset', './validation-engine', './metadata-key', './property-observer'], function (_export, _context) {
+  var metadata, ValidationRuleset, ValidationEngine, validationMetadataKey, observeProperty, Validator;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -9,109 +9,71 @@ System.register(['./metadata-key', './validation-config', './validation-engine',
     }
   }
 
+  function _possibleConstructorReturn(self, call) {
+    if (!self) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    }
+
+    return call && (typeof call === "object" || typeof call === "function") ? call : self;
+  }
+
+  function _inherits(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+    if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+  }
+
   return {
-    setters: [function (_metadataKey) {
-      validationMetadataKey = _metadataKey.validationMetadataKey;
-    }, function (_validationConfig) {
-      ValidationConfig = _validationConfig.ValidationConfig;
+    setters: [function (_aureliaMetadata) {
+      metadata = _aureliaMetadata.metadata;
+    }, function (_validationRuleset) {
+      ValidationRuleset = _validationRuleset.ValidationRuleset;
     }, function (_validationEngine) {
       ValidationEngine = _validationEngine.ValidationEngine;
-    }, function (_validationRule) {
-      ValidationRule = _validationRule.ValidationRule;
-    }, function (_aureliaMetadata) {
-      metadata = _aureliaMetadata.metadata;
+    }, function (_metadataKey) {
+      validationMetadataKey = _metadataKey.validationMetadataKey;
+    }, function (_propertyObserver) {
+      observeProperty = _propertyObserver.observeProperty;
     }],
     execute: function () {
-      _export('Validator', Validator = function () {
-        function Validator(object) {
+      _export('Validator', Validator = function (_ValidatorLite) {
+        _inherits(Validator, _ValidatorLite);
+
+        function Validator(targetObject) {
           _classCallCheck(this, Validator);
 
-          this.object = object;
+          var _this = _possibleConstructorReturn(this, _ValidatorLite.call(this, targetObject));
+
+          var ruleset = metadata.getOrCreateOwn(validationMetadataKey, ValidationRuleset, Object.getPrototypeOf(_this.targetObject));
+          _this.ruleset = ruleset;
+          return _this;
         }
 
-        Validator.prototype.validate = function validate(prop) {
-          var config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, this.object);
-          var reporter = ValidationEngine.getValidationReporter(this.object);
-          if (prop) {
-            config.validate(this.object, reporter, prop);
-          } else {
-            config.validate(this.object, reporter);
-          }
+        Validator.prototype.addRule = function addRule(key, rule) {
+          observeProperty(this.targetObject, key, undefined, null, rule);
         };
 
-        Validator.prototype.getProperties = function getProperties() {
-          console.error('Not yet implemented');
+        Validator.for = function _for(object) {
+          return new Validator(object);
         };
 
-        Validator.prototype.ensure = function ensure(prop) {
-          var config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, this.object);
-          this.config = config;
-          this.currentProperty = prop;
-          return this;
-        };
-
-        Validator.prototype.length = function length(configuration) {
-          this.config.addRule(this.currentProperty, ValidationRule.lengthRule(configuration));
-          return this;
-        };
-
-        Validator.prototype.presence = function presence() {
-          this.config.addRule(this.currentProperty, ValidationRule.presence());
-          return this;
-        };
-
-        Validator.prototype.required = function required() {
-          this.config.addRule(this.currentProperty, ValidationRule.presence());
-          return this;
-        };
-
-        Validator.prototype.numericality = function numericality() {
-          this.config.addRule(this.currentProperty, ValidationRule.numericality());
-          return this;
-        };
-
-        Validator.prototype.date = function date() {
-          this.config.addRule(this.currentProperty, ValidationRule.date());
-          return this;
-        };
-
-        Validator.prototype.datetime = function datetime() {
-          this.config.addRule(this.currentProperty, ValidationRule.datetime());
-          return this;
-        };
-
-        Validator.prototype.email = function email() {
-          this.config.addRule(this.currentProperty, ValidationRule.email());
-          return this;
-        };
-
-        Validator.prototype.equality = function equality(configuration) {
-          this.config.addRule(this.currentProperty, ValidationRule.equality(configuration));
-          return this;
-        };
-
-        Validator.prototype.format = function format(configuration) {
-          this.config.addRule(this.currentProperty, ValidationRule.format(configuration));
-          return this;
-        };
-
-        Validator.prototype.inclusion = function inclusion(configuration) {
-          this.config.addRule(this.currentProperty, ValidationRule.inclusion(configuration));
-          return this;
-        };
-
-        Validator.prototype.exclusion = function exclusion(configuration) {
-          this.config.addRule(this.currentProperty, ValidationRule.exclusion(configuration));
-          return this;
-        };
-
-        Validator.prototype.url = function url() {
-          this.config.addRule(this.currentProperty, ValidationRule.url());
-          return this;
+        Validator.prototype.validate = function validate(property) {
+          ValidationEngine.ensureValidationReporter(this.targetObject);
+          return _ValidatorLite.prototype.validate.call(this, property);
         };
 
         return Validator;
-      }());
+      }(ValidatorLite));
 
       _export('Validator', Validator);
     }

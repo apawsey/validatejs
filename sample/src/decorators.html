@@ -8,75 +8,76 @@
     <div>
       <label class="form-group">
         <strong>First Name</strong>
-        <input class="form-control" value.bind="model.firstName & validate" />
+        <input class="form-control" value.bind="model.firstName & liveValidationRendering" />
       </label>
     </div>
     <div>
       <label class="form-group" with.bind="model">
         <strong>Last Name</strong>
-        <input class="form-control" value.bind="lastName & validate" />
+        <input class="form-control" value.bind="lastName & liveValidationRendering" />
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Last Updated</strong>
-        <input type="date" class="form-control" value.bind="model.lastUpdated & validate"/>
+        <input type="date" class="form-control" value.bind="model.lastUpdated & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Last Time Updated</strong>
-        <input type="datetime" class="form-control" value.bind="model.lastTimeUpdated & validate"/>
+        <input type="datetime" class="form-control" value.bind="model.lastTimeUpdated & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Email</strong>
-        <input class="form-control" value.bind="model.email & validate"/>
+        <input class="form-control" value.bind="model.email & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Password</strong>
-        <input type="password" class="form-control" value.bind="model.password & validate"/>
+        <input type="password" class="form-control" value.bind="model.password & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Confirm Password</strong>
-        <input type="password" class="form-control" value.bind="model.confirmPassword & validate"/>
+        <input type="password" class="form-control" value.bind="model.confirmPassword & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Website</strong>
-        <input class="form-control" value.bind="model.website & validate"/>
+        <input class="form-control" value.bind="model.website & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Age</strong>
-        <input class="form-control" value.bind="model.age & validate"/>
+        <input class="form-control" value.bind="model.age & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Gender</strong>
-        <input class="form-control" value.bind="model.gender & validate"/>
+        <input class="form-control" value.bind="model.gender & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Blue or Red?</strong>
-        <input class="form-control" value.bind="model.blueOrRed & validate"/>
+        <input class="form-control" value.bind="model.blueOrRed & liveValidationRendering"/>
       </label>
     </div>
     <div>
       <label class="form-group">
         <strong>Zip Code</strong>
-        <input class="form-control" value.bind="model.zipCode & validate"/>
+        <input class="form-control" value.bind="model.zipCode & liveValidationRendering"/>
       </label>
     </div>
+    <button click.trigger="addValidator()">Add Validator & Rule</button>
     <button click.trigger="submit()">Submit</button>
   </form>
 </template>

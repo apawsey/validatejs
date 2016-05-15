@@ -26,10 +26,10 @@ export let ValidationReporter = class ValidationReporter {
     this.__callbacks__[observer.id] = observer;
     return observer;
   }
-  publish(errors) {
+  publish(errors, pushRendering) {
     for (let key of Object.keys(this.__callbacks__)) {
       let observer = this.__callbacks__[key];
-      observer.callback(errors);
+      observer.callback(errors, pushRendering);
     }
   }
   destroyObserver(observer) {

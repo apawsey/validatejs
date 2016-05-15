@@ -15,7 +15,16 @@ var ValidationEngine = exports.ValidationEngine = function () {
   }
 
   ValidationEngine.getValidationReporter = function getValidationReporter(instance) {
-    return instance.__validationReporter__ || (instance.__validationReporter__ = new _validationReporter.ValidationReporter());
+    return instance.__validationReporter__;
+  };
+
+  ValidationEngine.ensureValidationReporter = function ensureValidationReporter(instance) {
+    if (!instance.__validationReporter__) instance.__validationReporter__ = new _validationReporter.ValidationReporter();
+  };
+
+  ValidationEngine.getOrCreateValidationReporter = function getOrCreateValidationReporter(instance) {
+    ValidationEngine.ensureValidationReporter(instance);
+    return ValidationEngine.getValidationReporter(instance);
   };
 
   return ValidationEngine;

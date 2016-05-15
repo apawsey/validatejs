@@ -1,11 +1,18 @@
 import { metadata } from 'aurelia-metadata';
-import { ValidationConfig } from './validation-config';
+import { ValidationRuleset } from './validation-ruleset';
 import { ValidationEngine } from './validation-engine';
 import { validationMetadataKey } from './metadata-key';
+import { ValidationRule } from './validation-rule';
 
 export function observeProperty(target, key, descriptor, targetOrConfig, rule) {
-  let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, target);
-  config.addRule(key, rule(targetOrConfig));
+  let targetPrototype = rule instanceof ValidationRule ? Object.getPrototypeOf(target) : target;
+  let ruleset = metadata.getOrCreateOwn(validationMetadataKey, ValidationRuleset, targetPrototype);
+  if (rule instanceof ValidationRule) {
+    ruleset.addRule(key, rule);
+  } else {
+    ruleset.addRule(key, rule(targetOrConfig));
+    targetPrototype = null;
+  }
 
   let innerPropertyName = `_${ key }`;
 
@@ -26,16 +33,25 @@ export function observeProperty(target, key, descriptor, targetOrConfig, rule) {
     return this[innerPropertyName];
   };
   descriptor.set = function (newValue) {
-    let reporter = ValidationEngine.getValidationReporter(this);
+    ValidationEngine.ensureValidationReporter(this);
 
     this[innerPropertyName] = newValue;
 
-    config.validate(this, reporter);
+    ruleset.validate(this);
   };
 
   descriptor.get.dependencies = [innerPropertyName];
+  let extistingInstanceDescriptor = Object.getOwnPropertyDescriptor(target, key);
+  let alreadyInterceptedInstance = existingDescriptor && existingDescriptor.get && existingDescriptor.get.generatedBy == "au-validation";
+  let extistingProtoTypeDescriptor = targetPrototype ? Object.getOwnPropertyDescriptor(targetPrototype, key) : null;
+  let alreadyInterceptedPrototype = existingDescriptor && existingDescriptor.get && existingDescriptor.get.generatedBy == "au-validation";
+  descriptor.get.generatedBy = "au-validation";
 
-  if (!babel) {
+  if (!babel || !alreadyIntercepted) {
     Reflect.defineProperty(target, key, descriptor);
+  }
+
+  if (targetPrototype && !alreadyInterceptedPrototype) {
+    Reflect.defineProperty(targetPrototype, key, descriptor);
   }
 }

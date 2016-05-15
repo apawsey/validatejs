@@ -1,79 +1,33 @@
-import {validationMetadataKey} from './metadata-key';
-import {ValidationConfig} from './validation-config';
-import {ValidationEngine} from './validation-engine';
-import {ValidationRule} from './validation-rule';
 import {metadata} from 'aurelia-metadata';
+import {ValidationRuleset} from './validation-ruleset';
+import {ValidationEngine} from './validation-engine';
+import {validationMetadataKey} from './metadata-key';
+import {observeProperty} from './property-observer';
+import {ValidatorLite} from './validator-lite'
 
-export class Validator {
-  object;
-  config;
-  constructor(object) {
-    this.object = object;
-  }
-  validate(prop) {
-    let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, this.object);
-    let reporter = ValidationEngine.getValidationReporter(this.object);
-    if (prop) {
-      config.validate(this.object, reporter, prop);
-    } else {
-      config.validate(this.object, reporter);
+//instance based validator.
+//tied to an instance of an object, will automatically start observing properties included for validation.
+//constructor will automatically import any rules defined via decorators.
+export class Validator extends ValidatorLite {
+  constructor(targetObject) {
+    super(targetObject);
+    let prototypeRuleset = ValidationRuleset.getDecoratorsRuleset(targetObject);
+    if (prototypeRuleset) {
+      this.importRuleset(prototypeRuleset);
     }
   }
-  getProperties() {
-    console.error('Not yet implemented');
+  
+  addRule(key, rule) {
+    super.addRule(key, rule);
+    observeProperty(this.targetObject, key, undefined, null, rule, this)
   }
-  ensure(prop) {
-    let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, this.object);
-    this.config = config;
-    this.currentProperty = prop;
-    return this;
+  
+  static for(object) {
+      return new Validator(object);
   }
-  length(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.lengthRule(configuration));
-    return this;
-  }
-  presence() {
-    this.config.addRule(this.currentProperty, ValidationRule.presence());
-    return this;
-  }
-  required() {
-    this.config.addRule(this.currentProperty, ValidationRule.presence());
-    return this;
-  }
-  numericality() {
-    this.config.addRule(this.currentProperty, ValidationRule.numericality());
-    return this;
-  }
-  date() {
-    this.config.addRule(this.currentProperty, ValidationRule.date());
-    return this;
-  }
-  datetime() {
-    this.config.addRule(this.currentProperty, ValidationRule.datetime());
-    return this;
-  }
-  email() {
-    this.config.addRule(this.currentProperty, ValidationRule.email());
-    return this;
-  }
-  equality(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.equality(configuration));
-    return this;
-  }
-  format(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.format(configuration));
-    return this;
-  }
-  inclusion(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.inclusion(configuration));
-    return this;
-  }
-  exclusion(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.exclusion(configuration));
-    return this;
-  }
-  url() {
-    this.config.addRule(this.currentProperty, ValidationRule.url());
-    return this;
+  
+  validate(property) {
+    ValidationEngine.ensureValidationReporter(this.targetObject);
+    return super.validate(property);
   }
 }
