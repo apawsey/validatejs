@@ -35,7 +35,16 @@ export let ValidationRule = class ValidationRule {
   static exclusion(config) {
     return new ValidationRule('exclusion', config);
   }
+
   static format(config) {
+    if (config instanceof RegExp) {
+      let pattern = config.toString();
+      pattern = pattern.substr(1, pattern.length - 2);
+      config = {
+        pattern: pattern
+      };
+    }
+
     return new ValidationRule('format', config);
   }
   static inclusion(config) {
@@ -52,6 +61,14 @@ export let ValidationRule = class ValidationRule {
   }
   static url(config = true) {
     return new ValidationRule('url', config);
+  }
+
+  static custom(config = true, name) {
+    if (Reflect.has(config, "name")) {
+      return new ValidationRule(config.name, config.config);
+    } else {
+      return new ValidationRule(name, config);
+    }
   }
 };
 

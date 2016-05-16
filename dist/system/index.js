@@ -1,6 +1,6 @@
 'use strict';
 
-System.register(['./decorators', './validation-engine', 'aurelia-validation', './validator', './validation-reporter', './validation-renderer'], function (_export, _context) {
+System.register(['./decorators', './validation-engine', 'aurelia-validation', './validator', './validator-lite', './validation-ruleset', './validation-reporter', './validation-renderer'], function (_export, _context) {
   var Validator, ValidateJSValidator, ValidationReporter, ValidateJSReporter;
   return {
     setters: [function (_decorators) {
@@ -16,6 +16,7 @@ System.register(['./decorators', './validation-engine', 'aurelia-validation', '.
       _exportObj.format = _decorators.format;
       _exportObj.url = _decorators.url;
       _exportObj.numericality = _decorators.numericality;
+      _exportObj.custom = _decorators.custom;
 
       _export(_exportObj);
     }, function (_validationEngine) {
@@ -32,23 +33,34 @@ System.register(['./decorators', './validation-engine', 'aurelia-validation', '.
       _exportObj3.Validator = _validator.Validator;
 
       _export(_exportObj3);
-    }, function (_validationReporter) {
-      ValidateJSReporter = _validationReporter.ValidationReporter;
+    }, function (_validatorLite) {
       var _exportObj4 = {};
-      _exportObj4.ValidationReporter = _validationReporter.ValidationReporter;
+      _exportObj4.ValidatorLite = _validatorLite.ValidatorLite;
 
       _export(_exportObj4);
-    }, function (_validationRenderer) {
+    }, function (_validationRuleset) {
       var _exportObj5 = {};
-      _exportObj5.ValidationRenderer = _validationRenderer.ValidationRenderer;
+      _exportObj5.ValidationRuleset = _validationRuleset.ValidationRuleset;
 
       _export(_exportObj5);
+    }, function (_validationReporter) {
+      ValidateJSReporter = _validationReporter.ValidationReporter;
+      var _exportObj6 = {};
+      _exportObj6.ValidationReporter = _validationReporter.ValidationReporter;
+
+      _export(_exportObj6);
+    }, function (_validationRenderer) {
+      var _exportObj7 = {};
+      _exportObj7.ValidationRenderer = _validationRenderer.ValidationRenderer;
+
+      _export(_exportObj7);
     }],
     execute: function () {
       function configure(config) {
         config.container.registerHandler(Validator, ValidateJSValidator);
         config.container.registerHandler(ValidationReporter, ValidateJSReporter);
-        config.globalResources('./validate-binding-behavior');
+        config.globalResources('./validation-rendering-binding-behavior');
+        config.globalResources('./live-validation-rendering-binding-behavior');
       }
 
       _export('configure', configure);

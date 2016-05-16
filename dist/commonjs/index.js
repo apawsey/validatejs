@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.ValidationRenderer = exports.ValidationReporter = exports.Validator = exports.ValidationEngine = exports.numericality = exports.url = exports.format = exports.inclusion = exports.exclusion = exports.equality = exports.email = exports.datetime = exports.date = exports.required = exports.length = undefined;
+exports.ValidationRenderer = exports.ValidationReporter = exports.ValidationRuleset = exports.ValidatorLite = exports.Validator = exports.ValidationEngine = exports.custom = exports.numericality = exports.url = exports.format = exports.inclusion = exports.exclusion = exports.equality = exports.email = exports.datetime = exports.date = exports.required = exports.length = undefined;
 
 var _decorators = require('./decorators');
 
@@ -73,6 +73,12 @@ Object.defineProperty(exports, 'numericality', {
     return _decorators.numericality;
   }
 });
+Object.defineProperty(exports, 'custom', {
+  enumerable: true,
+  get: function get() {
+    return _decorators.custom;
+  }
+});
 
 var _validationEngine = require('./validation-engine');
 
@@ -89,6 +95,24 @@ Object.defineProperty(exports, 'Validator', {
   enumerable: true,
   get: function get() {
     return _validator.Validator;
+  }
+});
+
+var _validatorLite = require('./validator-lite');
+
+Object.defineProperty(exports, 'ValidatorLite', {
+  enumerable: true,
+  get: function get() {
+    return _validatorLite.ValidatorLite;
+  }
+});
+
+var _validationRuleset = require('./validation-ruleset');
+
+Object.defineProperty(exports, 'ValidationRuleset', {
+  enumerable: true,
+  get: function get() {
+    return _validationRuleset.ValidationRuleset;
   }
 });
 
@@ -116,5 +140,6 @@ var _aureliaValidation = require('aurelia-validation');
 function configure(config) {
   config.container.registerHandler(_aureliaValidation.Validator, _validator.Validator);
   config.container.registerHandler(_aureliaValidation.ValidationReporter, _validationReporter.ValidationReporter);
-  config.globalResources('./validate-binding-behavior');
+  config.globalResources('./validation-rendering-binding-behavior');
+  config.globalResources('./live-validation-rendering-binding-behavior');
 }

@@ -15,6 +15,7 @@ exports.inclusion = inclusion;
 exports.format = format;
 exports.url = url;
 exports.numericality = numericality;
+exports.custom = custom;
 
 var _validationRule = require('./validation-rule');
 
@@ -66,4 +67,12 @@ function url(targetOrConfig, key, descriptor) {
 
 function numericality(targetOrConfig, key, descriptor) {
   return (0, _baseDecorator.base)(targetOrConfig, key, descriptor, _validationRule.ValidationRule.numericality);
+}
+
+function custom(name, targetOrConfig, key, descriptor) {
+  targetOrConfig = {
+    name: name,
+    config: targetOrConfig === undefined ? true : targetOrConfig
+  };
+  return (0, _baseDecorator.base)(targetOrConfig, key, descriptor, _validationRule.ValidationRule.custom);
 }

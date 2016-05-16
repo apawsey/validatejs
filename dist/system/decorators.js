@@ -80,6 +80,16 @@ System.register(['./validation-rule', './base-decorator'], function (_export, _c
       }
 
       _export('numericality', numericality);
+
+      function custom(name, targetOrConfig, key, descriptor) {
+        targetOrConfig = {
+          name: name,
+          config: targetOrConfig === undefined ? true : targetOrConfig
+        };
+        return base(targetOrConfig, key, descriptor, ValidationRule.custom);
+      }
+
+      _export('custom', custom);
     }
   };
 });

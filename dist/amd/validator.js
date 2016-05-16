@@ -1,4 +1,4 @@
-define(['exports', './metadata-key', './validation-config', './validation-engine', './validation-rule', 'aurelia-metadata'], function (exports, _metadataKey, _validationConfig, _validationEngine, _validationRule, _aureliaMetadata) {
+define(['exports', 'aurelia-metadata', './validation-ruleset', './validation-engine', './metadata-key', './property-observer'], function (exports, _aureliaMetadata, _validationRuleset, _validationEngine, _metadataKey, _propertyObserver) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
@@ -12,94 +12,59 @@ define(['exports', './metadata-key', './validation-config', './validation-engine
     }
   }
 
-  var Validator = exports.Validator = function () {
-    function Validator(object) {
-      _classCallCheck(this, Validator);
-
-      this.object = object;
+  function _possibleConstructorReturn(self, call) {
+    if (!self) {
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
     }
 
-    Validator.prototype.validate = function validate(prop) {
-      var config = _aureliaMetadata.metadata.getOrCreateOwn(_metadataKey.validationMetadataKey, _validationConfig.ValidationConfig, this.object);
-      var reporter = _validationEngine.ValidationEngine.getValidationReporter(this.object);
-      if (prop) {
-        config.validate(this.object, reporter, prop);
-      } else {
-        config.validate(this.object, reporter);
+    return call && (typeof call === "object" || typeof call === "function") ? call : self;
+  }
+
+  function _inherits(subClass, superClass) {
+    if (typeof superClass !== "function" && superClass !== null) {
+      throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+    }
+
+    subClass.prototype = Object.create(superClass && superClass.prototype, {
+      constructor: {
+        value: subClass,
+        enumerable: false,
+        writable: true,
+        configurable: true
       }
+    });
+    if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+  }
+
+  var Validator = exports.Validator = function (_ValidatorLite) {
+    _inherits(Validator, _ValidatorLite);
+
+    function Validator(targetObject) {
+      _classCallCheck(this, Validator);
+
+      var _this = _possibleConstructorReturn(this, _ValidatorLite.call(this, targetObject));
+
+      var prototypeRuleset = _validationRuleset.ValidationRuleset.getDecoratorsRuleset(targetObject);
+      if (prototypeRuleset) {
+        _this.importRuleset(prototypeRuleset);
+      }
+      return _this;
+    }
+
+    Validator.prototype.addRule = function addRule(key, rule) {
+      _ValidatorLite.prototype.addRule.call(this, key, rule);
+      (0, _propertyObserver.observeProperty)(this.targetObject, key, undefined, null, rule, this);
     };
 
-    Validator.prototype.getProperties = function getProperties() {
-      console.error('Not yet implemented');
+    Validator.for = function _for(object) {
+      return new Validator(object);
     };
 
-    Validator.prototype.ensure = function ensure(prop) {
-      var config = _aureliaMetadata.metadata.getOrCreateOwn(_metadataKey.validationMetadataKey, _validationConfig.ValidationConfig, this.object);
-      this.config = config;
-      this.currentProperty = prop;
-      return this;
-    };
-
-    Validator.prototype.length = function length(configuration) {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.lengthRule(configuration));
-      return this;
-    };
-
-    Validator.prototype.presence = function presence() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.presence());
-      return this;
-    };
-
-    Validator.prototype.required = function required() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.presence());
-      return this;
-    };
-
-    Validator.prototype.numericality = function numericality() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.numericality());
-      return this;
-    };
-
-    Validator.prototype.date = function date() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.date());
-      return this;
-    };
-
-    Validator.prototype.datetime = function datetime() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.datetime());
-      return this;
-    };
-
-    Validator.prototype.email = function email() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.email());
-      return this;
-    };
-
-    Validator.prototype.equality = function equality(configuration) {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.equality(configuration));
-      return this;
-    };
-
-    Validator.prototype.format = function format(configuration) {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.format(configuration));
-      return this;
-    };
-
-    Validator.prototype.inclusion = function inclusion(configuration) {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.inclusion(configuration));
-      return this;
-    };
-
-    Validator.prototype.exclusion = function exclusion(configuration) {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.exclusion(configuration));
-      return this;
-    };
-
-    Validator.prototype.url = function url() {
-      this.config.addRule(this.currentProperty, _validationRule.ValidationRule.url());
-      return this;
+    Validator.prototype.validate = function validate(property) {
+      _validationEngine.ValidationEngine.ensureValidationReporter(this.targetObject);
+      return _ValidatorLite.prototype.validate.call(this, property);
     };
 
     return Validator;
-  }();
+  }(ValidatorLite);
 });

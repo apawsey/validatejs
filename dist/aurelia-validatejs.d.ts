@@ -12,10 +12,6 @@ declare module 'aurelia-validatejs' {
     metadata
   } from 'aurelia-metadata';
   import validate from 'validate.js';
-  export class ValidationRenderer {
-    renderErrors(node: any, relevantErrors: any): any;
-    unrenderErrors(node: any): any;
-  }
   export class ValidationConfig {
     __validationRules__: any;
     addRule(key: any, rule: any): any;
@@ -27,6 +23,10 @@ declare module 'aurelia-validatejs' {
   //get __validationRules__ from class using metadata
   //merge with any instance specific __validationRules__
   export const validationMetadataKey: any;
+  export class ValidationRenderer {
+    renderErrors(node: any, relevantErrors: any): any;
+    unrenderErrors(node: any): any;
+  }
   export class ValidationObserver {
     id: any;
     callback: any;
@@ -38,7 +38,7 @@ declare module 'aurelia-validatejs' {
     callback: any;
     __callbacks__: any;
     subscribe(callback: any): any;
-    publish(errors: any): any;
+    publish(errors: any, pushRendering: any): any;
     destroyObserver(observer: any): any;
   }
   export class ValidationRule {
@@ -51,12 +51,15 @@ declare module 'aurelia-validatejs' {
     static email(config?: any): any;
     static equality(config: any): any;
     static exclusion(config: any): any;
+    
+    //ensures regex can be cloned by JSON/JSON approach.
     static format(config: any): any;
     static inclusion(config: any): any;
     static lengthRule(config: any): any;
     static numericality(config?: any): any;
     static presence(config?: any): any;
     static url(config?: any): any;
+    static custom(config?: any, name: any): any;
   }
   export function cleanResult(data: any): any;
   export class ValidateBindingBehavior {
@@ -73,29 +76,86 @@ declare module 'aurelia-validatejs' {
   }
   export class ValidationEngine {
     static getValidationReporter(instance: any): any;
+    static ensureValidationReporter(instance: any): any;
+    static getOrCreateValidationReporter(instance: any): any;
   }
-  export function observeProperty(target: any, key: any, descriptor: any, targetOrConfig: any, rule: any): any;
-  export class Validator {
-    object: any;
-    config: any;
-    constructor(object: any);
-    validate(prop: any): any;
-    getProperties(): any;
-    ensure(prop: any): any;
+  export class LiveValidationRenderingBindingBehavior {
+    constructor(renderer: any);
+    bind(binding: any, source: any): any;
+    unbind(binding: any, source: any): any;
+    
+    // let targetProperty = this.getTargetProperty(source);
+    // let target = this.getPropertyContext(source, targetProperty);
+    // let reporter = this.getReporter(source);
+    getTargetProperty(binding: any): any;
+    getTargetObject(binding: any): any;
+    getPropertyContext(source: any, targetProperty: any): any;
+  }
+  
+  // See comments on live validation behavior.  Only difference is this will never live render validations
+  // want to inherit classes, but not possible within framework, and I don't know how to do a mixin :)
+  export class ValidationRenderingBindingBehavior {
+    constructor(renderer: any);
+    bind(binding: any, source: any): any;
+    unbind(binding: any, source: any): any;
+    
+    // let targetProperty = this.getTargetProperty(source);
+    // let target = this.getPropertyContext(source, targetProperty);
+    // let reporter = this.getReporter(source);
+    getTargetProperty(binding: any): any;
+    getTargetObject(binding: any): any;
+    getPropertyContext(source: any, targetProperty: any): any;
+  }
+  
+  //Seperate validation rulset
+  //Can be used independently to build a list of rules, and to validate any object
+  export class ValidationRuleset {
+    static for(object: any): any;
+    __validationRules__: any;
+    addRule(key: any, rule: any): any;
+    validate(instance: any, property: any, _pushRendering: any): any;
+    static getDecoratorsRuleset(instance: any): any;
+    ensure(property: any): any;
     length(configuration: any): any;
-    presence(): any;
-    required(): any;
-    numericality(): any;
-    date(): any;
-    datetime(): any;
-    email(): any;
+    presence(configuration: any): any;
+    required(configuration: any): any;
+    numericality(configuration: any): any;
+    date(configuration: any): any;
+    datetime(configuration: any): any;
+    email(configuration: any): any;
     equality(configuration: any): any;
     format(configuration: any): any;
     inclusion(configuration: any): any;
     exclusion(configuration: any): any;
-    url(): any;
+    url(configuration: any): any;
+  }
+  export function observeProperty(target: any, key: any, descriptor: any, targetOrConfig: any, rule: any, ruleset: any): any;
+  
+  //light weight instance validator.
+  //does not import prototype rules, does not observeproperties.
+  //only method for validation is calling validate method.
+  //Will report via ValidationReporter if getValidationReporter() has previously been called.
+  export class ValidatorLite extends ValidationRuleset {
+    constructor(targetObject: any);
+    addRule(key: any, rule: any): any;
+    importRuleset(ruleset: any): any;
+    getProperties(): any;
+    static for(object: any): any;
+    validate(property: any): any;
+    getValidationReporter(): any;
   }
   export function base(targetOrConfig: any, key: any, descriptor: any, rule: any): any;
+  
+  //import {ValidatorLite} from './validator-lite'
+  //instance based validator.
+  //tied to an instance of an object, will automatically start observing properties included for validation.
+  //constructor will automatically import any rules defined via decorators.
+  export class Validator extends ValidatorLite {
+    constructor(targetObject: any);
+    addRule(key: any, rule: any): any;
+    static for(object: any): any;
+    validate(property: any): any;
+  }
   export function length(targetOrConfig: any, key: any, descriptor: any): any;
   export function presence(targetOrConfig: any, key: any, descriptor: any): any;
   export function required(targetOrConfig: any, key: any, descriptor: any): any;
@@ -108,4 +168,5 @@ declare module 'aurelia-validatejs' {
   export function format(targetOrConfig: any, key: any, descriptor: any): any;
   export function url(targetOrConfig: any, key: any, descriptor: any): any;
   export function numericality(targetOrConfig: any, key: any, descriptor: any): any;
+  export function custom(name: any, targetOrConfig: any, key: any, descriptor: any): any;
 }

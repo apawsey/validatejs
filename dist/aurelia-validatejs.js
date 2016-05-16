@@ -3,39 +3,6 @@ import {ValidationError} from 'aurelia-validation';
 import {inject} from 'aurelia-dependency-injection';
 import {metadata} from 'aurelia-metadata';
 
-export class ValidationRenderer {
-  renderErrors(node, relevantErrors) {
-    if (relevantErrors.length) {
-      node.parentElement.classList.add('has-error');
-      relevantErrors.forEach(error => {
-        if (node.parentElement.textContent.indexOf(error.message) === -1) {
-          let errorMessageHelper = DOM.createElement('span');
-          let errorMessageNode = DOM.createTextNode(error.message);
-          errorMessageHelper.appendChild(errorMessageNode);
-          errorMessageHelper.classList.add('help-block');
-          node.parentElement.appendChild(errorMessageHelper);
-        }
-      });
-    } else {
-      this.unrenderErrors(node);
-    }
-  }
-  unrenderErrors(node) {
-    let deleteThese = [];
-    node.parentElement.classList.remove('has-error');
-    let children = node.parentElement.children;
-    for (let i = 0; i < children.length; i++) {
-      let child = children[i];
-      if (child.classList.contains('help-block')) {
-        deleteThese.push(child);
-      }
-    }
-    deleteThese.forEach(child => {
-      node.parentElement.removeChild(child);
-    });
-  }
-}
-
 export class ValidationConfig {
   __validationRules__ = [];
   addRule(key, rule) {
@@ -66,6 +33,42 @@ export class ValidationConfig {
 
 export const validationMetadataKey = 'aurelia:validation';
 
+export class ValidationRenderer {
+  renderErrors(node, relevantErrors) {
+    if (relevantErrors.length) {
+      this.unrenderErrors(node);
+      node.parentElement.classList.add('has-error');
+      relevantErrors.forEach(error => {
+        if (node.parentElement.textContent.indexOf(error.message) === -1) {
+          let errorMessageHelper = DOM.createElement('span');
+          let errorMessageNode = DOM.createTextNode(error.message);
+          errorMessageHelper.appendChild(errorMessageNode);
+          errorMessageHelper.classList.add('help-block', 'au-validation');
+          node.parentElement.appendChild(errorMessageHelper);
+        }
+      });
+    } else {
+      if (node.parentElement.classList.contains('has-error')) {
+        this.unrenderErrors(node);
+      }
+    }
+  }
+  unrenderErrors(node) {
+    let deleteThese = [];
+    node.parentElement.classList.remove('has-error');
+    let children = node.parentElement.children;
+    for (let i = 0; i < children.length; i++) {
+      let child = children[i];
+      if (child.classList.contains('help-block') && child.classList.contains('au-validation')) {
+        deleteThese.push(child);
+      }
+    }
+    deleteThese.forEach(child => {
+      node.parentElement.removeChild(child);
+    });
+  }
+}
+
 function getRandomId() {
   let rand = Math.floor(Math.random() * (99999 - 10000 + 1)) + 10000;
   let id = new Date().getTime() + rand;
@@ -93,10 +96,10 @@ export class ValidationReporter {
     this.__callbacks__[observer.id] = observer;
     return observer;
   }
-  publish(errors) {
+  publish(errors, pushRendering) {
     for (let key of Object.keys(this.__callbacks__)) {
       let observer = this.__callbacks__[key];
-      observer.callback(errors);
+      observer.callback(errors, pushRendering);
     }
   }
   destroyObserver(observer) {
@@ -140,7 +143,16 @@ export class ValidationRule {
   static exclusion(config) {
     return new ValidationRule('exclusion', config);
   }
+  //ensures regex can be cloned by JSON/JSON approach.
   static format(config) {
+    if (config instanceof RegExp) {
+      let pattern = config.toString();
+      pattern = pattern.substr(1, pattern.length - 2);
+      config = {
+        pattern: pattern
+      }
+    }
+      
     return new ValidationRule('format', config);
   }
   static inclusion(config) {
@@ -157,6 +169,14 @@ export class ValidationRule {
   }
   static url(config = true) {
     return new ValidationRule('url', config);
+  }
+  
+  static custom(config = true, name) {
+    if (Reflect.has(config, "name")) {
+      return new ValidationRule(config.name, config.config);
+    } else {
+      return new ValidationRule(name, config);
+    }
   }
 }
 
@@ -223,17 +243,251 @@ export class ValidateBindingBehavior {
 
 export class ValidationEngine {
   static getValidationReporter(instance) {
-    return instance.__validationReporter__ || (instance.__validationReporter__ = new ValidationReporter());
+    return instance.__validationReporter__
+  }
+  
+  static ensureValidationReporter(instance) {
+    if (!instance.__validationReporter__)
+      instance.__validationReporter__ = new ValidationReporter();
+  }
+  
+  static getOrCreateValidationReporter(instance) {
+    ValidationEngine.ensureValidationReporter(instance);
+    return ValidationEngine.getValidationReporter(instance);
   }
 }
 
-export function observeProperty(target, key, descriptor, targetOrConfig, rule) {
-  let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, target);
-  config.addRule(key, rule(targetOrConfig));
+@inject(ValidationRenderer)
+export class LiveValidationRenderingBindingBehavior {
+  constructor(renderer) {
+    this.renderer = renderer;
+    this.liveBinding = true;
+  }
+  
+  bind(binding, source) {
+    let targetProperty;
+    let target;
+    let reporter;
+    //capture the focus event on the element, so we know if we should start rendering validation errors.
+    binding.target._dirty = false;
+    binding.target.addEventListener('focus', (event) => { binding.target._dirty = true; });
+    targetProperty = this.getTargetProperty(binding);
+    target = this.getTargetObject(binding);
+    reporter = ValidationEngine.getOrCreateValidationReporter(target);
+    reporter.subscribe((errors, pushRendering) => {
+      let relevantErrors = errors.filter(error => {
+        return error.propertyName === targetProperty;
+      });
+      //only render errors if they have been pushed by a method call, or the user has touched the field.
+      if ((this.liveBinding && binding.target._dirty) || pushRendering)
+        this.renderer.renderErrors(binding.target, relevantErrors);
+    });
+  }
+  
+  unbind(binding, source) {
+    // let targetProperty = this.getTargetProperty(source);
+    // let target = this.getPropertyContext(source, targetProperty);
+    // let reporter = this.getReporter(source);
+  }
+  
+  getTargetProperty(binding) {
+    let targetProperty;
+    if (binding.sourceExpression && binding.sourceExpression.expression && binding.sourceExpression.expression.name) {
+      targetProperty = binding.sourceExpression.expression.name;
+    }
+    return targetProperty;
+  }
+  getTargetObject(binding) {
+    let targetObject;
+    if (binding.sourceExpression && binding.sourceExpression.expression && binding.sourceExpression.expression.object) {
+      targetObject = binding.source.bindingContext[binding.sourceExpression.expression.object.name];
+    }  else {
+      targetObject = binding.source.bindingContext;
+    }
+    return targetObject;
+  }
+  getPropertyContext(source, targetProperty) {
+    let target = getContextFor(source, targetProperty);
+    return target;
+  }
+}
+// See comments on live validation behavior.  Only difference is this will never live render validations
+// want to inherit classes, but not possible within framework, and I don't know how to do a mixin :)
+@inject(ValidationRenderer)
+export class ValidationRenderingBindingBehavior {
+  constructor(renderer) {
+    this.renderer = renderer;
+    this.liveBinding = false;
+  }
+  
+  bind(binding, source) {
+    let targetProperty;
+    let target;
+    let reporter;
+    source._dirty = false;
+    binding.target.addEventListener('focus', (event) => { source._dirty = true; });
+    targetProperty = this.getTargetProperty(binding);
+    target = this.getTargetObject(binding);
+    reporter = ValidationEngine.getOrCreateValidationReporter(target);
+    reporter.subscribe((errors, pushRendering) => {
+      let relevantErrors = errors.filter(error => {
+        return error.propertyName === targetProperty;
+      });
+      if ((this.liveBinding && source._dirty) || pushRendering)
+        this.renderer.renderErrors(binding.target, relevantErrors);
+    });
+  }
+   
+  unbind(binding, source) {
+    // let targetProperty = this.getTargetProperty(source);
+    // let target = this.getPropertyContext(source, targetProperty);
+    // let reporter = this.getReporter(source);
+  }
+  
+  getTargetProperty(binding) {
+    let targetProperty;
+    if (binding.sourceExpression && binding.sourceExpression.expression && binding.sourceExpression.expression.name) {
+      targetProperty = binding.sourceExpression.expression.name;
+    }
+    return targetProperty;
+  }
+  getTargetObject(binding) {
+    let targetObject;
+    if (binding.sourceExpression && binding.sourceExpression.expression && binding.sourceExpression.expression.object) {
+      targetObject = binding.source.bindingContext[binding.sourceExpression.expression.object.name];
+    }  else {
+      targetObject = binding.source.bindingContext;
+    }
+    return targetObject;
+  }
+  getPropertyContext(source, targetProperty) {
+    let target = getContextFor(source, targetProperty);
+    return target;
+  }
+}
+//Seperate validation rulset
+//Can be used independently to build a list of rules, and to validate any object
+export class ValidationRuleset
+{
+  static for(object) {
+    return new Validator(object);
+  }
+  
+  __validationRules__ = [];
+  
+  addRule(key, rule) {
+    this.__validationRules__.push({ key: key, rule: rule });
+  }
+  
+  validate(instance, property, _pushRendering) {
+    let errors = [];
+    //Only gets reporter if one already exists.
+    let reporter = ValidationEngine.getValidationReporter(instance);
+    this.__validationRules__.forEach(rule => {
+      if (!property || property === rule.key) {
+        let result = rule.rule.validate(instance, rule.key);
+        if (result) {
+          errors.push(result);
+        }
+      }
+    });
+    //only publishes errors if it finds an existing reporter.  Always returns errors though.
+    if (reporter)
+      reporter.publish(errors, _pushRendering);
+    return errors;
+  }
+  
+  [Symbol.iterator]() {
+      return this.__validationRules__[Symbol.iterator]();
+  }
+  
+  static getDecoratorsRuleset(instance) {
+    let prototypeRuleset = metadata.get(validationMetadataKey, instance);
+    if (prototypeRuleset) {
+      return prototypeRuleset;
+    } else {
+      return undefined;
+    }
+  }
+  
+  ensure(property) {
+    this.currentProperty = property;
+    return this;
+  }
+  length(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.lengthRule(configuration));
+    return this;
+  }
+  presence(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.presence(configuration));
+    return this;
+  }
+  required(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.presence(configuration));
+    return this;
+  }
+  numericality(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.numericality(configuration));
+    return this;
+  }
+  date(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.date(configuration));
+    return this;
+  }
+  datetime(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.datetime(configuration));
+    return this;
+  }
+  email(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.email(configuration));
+    return this;
+  }
+  equality(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.equality(configuration));
+    return this;
+  }
+  format(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.format(configuration));
+    return this;
+  }
+  inclusion(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.inclusion(configuration));
+    return this;
+  }
+  exclusion(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.exclusion(configuration));
+    return this;
+  }
+  url(configuration) {
+    this.addRule(this.currentProperty, ValidationRule.url(configuration));
+    return this;
+  }
+}
+export function observeProperty(target, key, descriptor, targetOrConfig, rule, ruleset) {
+  // if rule is an existing instance, we know we came from the Validator, rather than the decorators.
+  if (rule instanceof ValidationRule) {
+    //avoid inserting properties that do not exist. - Possible problem if the property is added later?
+    if (!Reflect.has(target, key)) {
+      return;
+    }
+  } else {
+    // get ruleset from metatdata
+    ruleset = metadata.getOrCreateOwn(validationMetadataKey, ValidationRuleset, target);
+    ruleset.addRule(key, rule(targetOrConfig));
+  }
 
   // TODO: REMOVE
   let innerPropertyName = `_${key}`;
-
+  
+  //Check if we've already intercepted a specific property
+  let existingDescriptor = Object.getOwnPropertyDescriptor(target, key);
+  let alreadyIntercepted = ((existingDescriptor !== undefined) && (existingDescriptor.get !== undefined) && existingDescriptor.get.generatedBy == "au-validation")
+  //capture any existing value, otherwise it disappears when we redefine the property
+  let instanceValue = ((existingDescriptor !== undefined) && (existingDescriptor.value !== undefined) ? existingDescriptor.value : undefined)
+  if (instanceValue === undefined) {
+    instanceValue = target[key];
+  }
+  
   // typescript or babel?
   let babel = descriptor !== undefined;
 
@@ -250,97 +504,70 @@ export function observeProperty(target, key, descriptor, targetOrConfig, rule) {
 
   delete descriptor.writable;
   delete descriptor.initializer;
-
+  
   descriptor.get = function() { return this[innerPropertyName]; };
   descriptor.set = function(newValue) {
-    let reporter = ValidationEngine.getValidationReporter(this);
+    ValidationEngine.ensureValidationReporter(this);
 
     this[innerPropertyName] = newValue;
 
-    config.validate(this, reporter);
+    //ensure we always call the basic ruleset validation method (rather than the validator classes methods)
+    ValidationRuleset.prototype.validate.call(ruleset, this);
   };
 
   descriptor.get.dependencies = [innerPropertyName];
-
-  if (!babel) {
+  //tag the descriptor s we know we generated it.
+  descriptor.get.generatedBy = "au-validation";
+  
+  if (!babel && !alreadyIntercepted) {
     Reflect.defineProperty(target, key, descriptor);
+    if (instanceValue) {
+      target[innerPropertyName] = instanceValue;
+    }
   }
 }
 
-export class Validator {
-  object;
-  config;
-  constructor(object) {
-    this.object = object;
+//light weight instance validator.
+//does not import prototype rules, does not observeproperties.
+//only method for validation is calling validate method.
+//Will report via ValidationReporter if getValidationReporter() has previously been called.
+export class ValidatorLite extends ValidationRuleset {
+    
+  constructor(targetObject) {
+    super();
+    this.targetObject = targetObject;
   }
-  validate(prop) {
-    let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, this.object);
-    let reporter = ValidationEngine.getValidationReporter(this.object);
-    if (prop) {
-      config.validate(this.object, reporter, prop);
-    } else {
-      config.validate(this.object, reporter);
+  
+  addRule(key, rule) {
+    super.addRule(key,rule);
+  }
+  
+  importRuleset(ruleset) {
+    for (var rule of ruleset) {
+      this.addRule(rule.key, new ValidationRule(rule.rule.name, JSON.parse(JSON.stringify(rule.rule.config))));
     }
   }
+  
   getProperties() {
     console.error('Not yet implemented');
   }
-  ensure(prop) {
-    let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, this.object);
-    this.config = config;
-    this.currentProperty = prop;
-    return this;
+  
+  static for(object) {
+      return new ValidatorLite(object);
   }
-  length(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.lengthRule(configuration));
-    return this;
+  
+  validate(property) {
+    if (property) {
+      return super.validate(this.targetObject, property, true);
+    } else {
+      return super.validate(this.targetObject, null, true);
+    }
   }
-  presence() {
-    this.config.addRule(this.currentProperty, ValidationRule.presence());
-    return this;
-  }
-  required() {
-    this.config.addRule(this.currentProperty, ValidationRule.presence());
-    return this;
-  }
-  numericality() {
-    this.config.addRule(this.currentProperty, ValidationRule.numericality());
-    return this;
-  }
-  date() {
-    this.config.addRule(this.currentProperty, ValidationRule.date());
-    return this;
-  }
-  datetime() {
-    this.config.addRule(this.currentProperty, ValidationRule.datetime());
-    return this;
-  }
-  email() {
-    this.config.addRule(this.currentProperty, ValidationRule.email());
-    return this;
-  }
-  equality(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.equality(configuration));
-    return this;
-  }
-  format(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.format(configuration));
-    return this;
-  }
-  inclusion(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.inclusion(configuration));
-    return this;
-  }
-  exclusion(configuration) {
-    this.config.addRule(this.currentProperty, ValidationRule.exclusion(configuration));
-    return this;
-  }
-  url() {
-    this.config.addRule(this.currentProperty, ValidationRule.url());
-    return this;
+  
+  getValidationReporter() {
+    return ValidationEngine.getOrCreateValidationReporter(this.targetObject)
   }
 }
-
 export function base(targetOrConfig, key, descriptor, rule) {
   if (key) {
     let target = targetOrConfig;
@@ -352,6 +579,34 @@ export function base(targetOrConfig, key, descriptor, rule) {
   };
 }
 
+//import {ValidatorLite} from './validator-lite'
+
+//instance based validator.
+//tied to an instance of an object, will automatically start observing properties included for validation.
+//constructor will automatically import any rules defined via decorators.
+export class Validator extends ValidatorLite {
+  constructor(targetObject) {
+    super(targetObject);
+    let prototypeRuleset = ValidationRuleset.getDecoratorsRuleset(targetObject);
+    if (prototypeRuleset) {
+      this.importRuleset(prototypeRuleset);
+    }
+  }
+  
+  addRule(key, rule) {
+    super.addRule(key, rule);
+    observeProperty(this.targetObject, key, undefined, null, rule, this)
+  }
+  
+  static for(object) {
+      return new Validator(object);
+  }
+  
+  validate(property) {
+    ValidationEngine.ensureValidationReporter(this.targetObject);
+    return super.validate(property);
+  }
+}
 export function length(targetOrConfig, key, descriptor) {
   return base(targetOrConfig, key, descriptor, ValidationRule.lengthRule);
 }
@@ -398,4 +653,12 @@ export function url(targetOrConfig, key, descriptor) {
 
 export function numericality(targetOrConfig, key, descriptor) {
   return base(targetOrConfig, key, descriptor, ValidationRule.numericality);
+}
+
+export function custom(name, targetOrConfig, key, descriptor) {
+  targetOrConfig = {
+    name: name,
+    config: targetOrConfig === undefined ? true : targetOrConfig
+  }
+  return base(targetOrConfig, key, descriptor, ValidationRule.custom);
 }

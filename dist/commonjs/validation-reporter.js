@@ -42,7 +42,7 @@ var ValidationReporter = exports.ValidationReporter = function () {
     return observer;
   };
 
-  ValidationReporter.prototype.publish = function publish(errors) {
+  ValidationReporter.prototype.publish = function publish(errors, pushRendering) {
     for (var _iterator = Object.keys(this.__callbacks__), _isArray = Array.isArray(_iterator), _i = 0, _iterator = _isArray ? _iterator : _iterator[Symbol.iterator]();;) {
       var _ref;
 
@@ -58,7 +58,7 @@ var ValidationReporter = exports.ValidationReporter = function () {
       var key = _ref;
 
       var observer = this.__callbacks__[key];
-      observer.callback(errors);
+      observer.callback(errors, pushRendering);
     }
   };
 

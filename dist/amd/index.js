@@ -1,10 +1,10 @@
-define(['exports', './decorators', './validation-engine', './validator', './validation-reporter', './validation-renderer', 'aurelia-validation'], function (exports, _decorators, _validationEngine, _validator, _validationReporter, _validationRenderer, _aureliaValidation) {
+define(['exports', './decorators', './validation-engine', './validator', './validator-lite', './validation-ruleset', './validation-reporter', './validation-renderer', 'aurelia-validation'], function (exports, _decorators, _validationEngine, _validator, _validatorLite, _validationRuleset, _validationReporter, _validationRenderer, _aureliaValidation) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
-  exports.ValidationRenderer = exports.ValidationReporter = exports.Validator = exports.ValidationEngine = exports.numericality = exports.url = exports.format = exports.inclusion = exports.exclusion = exports.equality = exports.email = exports.datetime = exports.date = exports.required = exports.length = undefined;
+  exports.ValidationRenderer = exports.ValidationReporter = exports.ValidationRuleset = exports.ValidatorLite = exports.Validator = exports.ValidationEngine = exports.custom = exports.numericality = exports.url = exports.format = exports.inclusion = exports.exclusion = exports.equality = exports.email = exports.datetime = exports.date = exports.required = exports.length = undefined;
   Object.defineProperty(exports, 'length', {
     enumerable: true,
     get: function () {
@@ -71,6 +71,12 @@ define(['exports', './decorators', './validation-engine', './validator', './vali
       return _decorators.numericality;
     }
   });
+  Object.defineProperty(exports, 'custom', {
+    enumerable: true,
+    get: function () {
+      return _decorators.custom;
+    }
+  });
   Object.defineProperty(exports, 'ValidationEngine', {
     enumerable: true,
     get: function () {
@@ -81,6 +87,18 @@ define(['exports', './decorators', './validation-engine', './validator', './vali
     enumerable: true,
     get: function () {
       return _validator.Validator;
+    }
+  });
+  Object.defineProperty(exports, 'ValidatorLite', {
+    enumerable: true,
+    get: function () {
+      return _validatorLite.ValidatorLite;
+    }
+  });
+  Object.defineProperty(exports, 'ValidationRuleset', {
+    enumerable: true,
+    get: function () {
+      return _validationRuleset.ValidationRuleset;
     }
   });
   Object.defineProperty(exports, 'ValidationReporter', {
@@ -99,6 +117,7 @@ define(['exports', './decorators', './validation-engine', './validator', './vali
   function configure(config) {
     config.container.registerHandler(_aureliaValidation.Validator, _validator.Validator);
     config.container.registerHandler(_aureliaValidation.ValidationReporter, _validationReporter.ValidationReporter);
-    config.globalResources('./validate-binding-behavior');
+    config.globalResources('./validation-rendering-binding-behavior');
+    config.globalResources('./live-validation-rendering-binding-behavior');
   }
 });

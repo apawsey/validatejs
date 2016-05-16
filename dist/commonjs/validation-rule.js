@@ -68,6 +68,14 @@ var ValidationRule = exports.ValidationRule = function () {
   };
 
   ValidationRule.format = function format(config) {
+    if (config instanceof RegExp) {
+      var pattern = config.toString();
+      pattern = pattern.substr(1, pattern.length - 2);
+      config = {
+        pattern: pattern
+      };
+    }
+
     return new ValidationRule('format', config);
   };
 
@@ -95,6 +103,17 @@ var ValidationRule = exports.ValidationRule = function () {
     var config = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
 
     return new ValidationRule('url', config);
+  };
+
+  ValidationRule.custom = function custom() {
+    var config = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
+    var name = arguments[1];
+
+    if (Reflect.has(config, "name")) {
+      return new ValidationRule(config.name, config.config);
+    } else {
+      return new ValidationRule(name, config);
+    }
   };
 
   return ValidationRule;

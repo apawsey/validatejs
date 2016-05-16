@@ -1,13 +1,28 @@
 import { metadata } from 'aurelia-metadata';
-import { ValidationConfig } from './validation-config';
+import { ValidationRuleset } from './validation-ruleset';
 import { ValidationEngine } from './validation-engine';
 import { validationMetadataKey } from './metadata-key';
+import { ValidationRule } from './validation-rule';
 
-export function observeProperty(target, key, descriptor, targetOrConfig, rule) {
-  let config = metadata.getOrCreateOwn(validationMetadataKey, ValidationConfig, target);
-  config.addRule(key, rule(targetOrConfig));
+export function observeProperty(target, key, descriptor, targetOrConfig, rule, ruleset) {
+  if (rule instanceof ValidationRule) {
+    if (!Reflect.has(target, key)) {
+      return;
+    }
+  } else {
+    ruleset = metadata.getOrCreateOwn(validationMetadataKey, ValidationRuleset, target);
+    ruleset.addRule(key, rule(targetOrConfig));
+  }
 
   let innerPropertyName = `_${ key }`;
+
+  let existingDescriptor = Object.getOwnPropertyDescriptor(target, key);
+  let alreadyIntercepted = existingDescriptor !== undefined && existingDescriptor.get !== undefined && existingDescriptor.get.generatedBy == "au-validation";
+
+  let instanceValue = existingDescriptor !== undefined && existingDescriptor.value !== undefined ? existingDescriptor.value : undefined;
+  if (instanceValue === undefined) {
+    instanceValue = target[key];
+  }
 
   let babel = descriptor !== undefined;
 
@@ -26,16 +41,21 @@ export function observeProperty(target, key, descriptor, targetOrConfig, rule) {
     return this[innerPropertyName];
   };
   descriptor.set = function (newValue) {
-    let reporter = ValidationEngine.getValidationReporter(this);
+    ValidationEngine.ensureValidationReporter(this);
 
     this[innerPropertyName] = newValue;
 
-    config.validate(this, reporter);
+    ValidationRuleset.prototype.validate.call(ruleset, this);
   };
 
   descriptor.get.dependencies = [innerPropertyName];
 
-  if (!babel) {
+  descriptor.get.generatedBy = "au-validation";
+
+  if (!babel && !alreadyIntercepted) {
     Reflect.defineProperty(target, key, descriptor);
+    if (instanceValue) {
+      target[innerPropertyName] = instanceValue;
+    }
   }
 }

@@ -1,15 +1,29 @@
-define(['exports', 'aurelia-metadata', './validation-config', './validation-engine', './metadata-key'], function (exports, _aureliaMetadata, _validationConfig, _validationEngine, _metadataKey) {
+define(['exports', 'aurelia-metadata', './validation-ruleset', './validation-engine', './metadata-key', './validation-rule'], function (exports, _aureliaMetadata, _validationRuleset, _validationEngine, _metadataKey, _validationRule) {
   'use strict';
 
   Object.defineProperty(exports, "__esModule", {
     value: true
   });
   exports.observeProperty = observeProperty;
-  function observeProperty(target, key, descriptor, targetOrConfig, rule) {
-    var config = _aureliaMetadata.metadata.getOrCreateOwn(_metadataKey.validationMetadataKey, _validationConfig.ValidationConfig, target);
-    config.addRule(key, rule(targetOrConfig));
+  function observeProperty(target, key, descriptor, targetOrConfig, rule, ruleset) {
+    if (rule instanceof _validationRule.ValidationRule) {
+      if (!Reflect.has(target, key)) {
+        return;
+      }
+    } else {
+      ruleset = _aureliaMetadata.metadata.getOrCreateOwn(_metadataKey.validationMetadataKey, _validationRuleset.ValidationRuleset, target);
+      ruleset.addRule(key, rule(targetOrConfig));
+    }
 
     var innerPropertyName = '_' + key;
+
+    var existingDescriptor = Object.getOwnPropertyDescriptor(target, key);
+    var alreadyIntercepted = existingDescriptor !== undefined && existingDescriptor.get !== undefined && existingDescriptor.get.generatedBy == "au-validation";
+
+    var instanceValue = existingDescriptor !== undefined && existingDescriptor.value !== undefined ? existingDescriptor.value : undefined;
+    if (instanceValue === undefined) {
+      instanceValue = target[key];
+    }
 
     var babel = descriptor !== undefined;
 
@@ -28,17 +42,22 @@ define(['exports', 'aurelia-metadata', './validation-config', './validation-engi
       return this[innerPropertyName];
     };
     descriptor.set = function (newValue) {
-      var reporter = _validationEngine.ValidationEngine.getValidationReporter(this);
+      _validationEngine.ValidationEngine.ensureValidationReporter(this);
 
       this[innerPropertyName] = newValue;
 
-      config.validate(this, reporter);
+      _validationRuleset.ValidationRuleset.prototype.validate.call(ruleset, this);
     };
 
     descriptor.get.dependencies = [innerPropertyName];
 
-    if (!babel) {
+    descriptor.get.generatedBy = "au-validation";
+
+    if (!babel && !alreadyIntercepted) {
       Reflect.defineProperty(target, key, descriptor);
+      if (instanceValue) {
+        target[innerPropertyName] = instanceValue;
+      }
     }
   }
 });
